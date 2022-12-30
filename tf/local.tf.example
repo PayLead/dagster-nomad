@@ -1,0 +1,15 @@
+locals {
+  docker_registry = {
+    username = ""
+    password = ""
+  }
+  custom = tomap({
+    AWS_ACCESS_KEY_ID = "dagsterapp"
+    AWS_SECRET_ACCESS_KEY = "dagsterapp"
+    DAGSTER_NOMAD_JOB_ID = "dagster-executor"
+    DAGSTER_NOMAD_URL = "http://127.0.0.1:4646"
+    DAGSTER_POSTGRES_DSN = "postgresql://dagster:dagster@172.17.0.1:5432/dagster"
+    DAGSTER_S3_BUCKET = "dagster"
+    DAGSTER_S3_ENDPOINT_URL = "http://172.17.0.1:9000"
+  })
+}

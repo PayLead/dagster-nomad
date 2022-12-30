@@ -1,0 +1,26 @@
+storage:
+  postgres:
+    postgres_url:
+      env: DAGSTER_POSTGRES_DSN
+
+run_launcher:
+  module: dagster_nomad
+  class: NomadRunLauncher
+  config:
+    job_id:
+      env: DAGSTER_NOMAD_JOB_ID
+    url:
+      env: DAGSTER_NOMAD_URL
+
+compute_logs:
+  module: dagster_aws.s3.compute_log_manager
+  class: S3ComputeLogManager
+  config:
+    bucket:
+      env: DAGSTER_S3_BUCKET
+    prefix: logs
+    endpoint_url:
+      env: DAGSTER_S3_ENDPOINT_URL
+
+telemetry:
+  enabled: false
