@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "dagster-nomad-example"
-version = "0.1.0"
+version = "0.0.0.post2.dev0+3f759bf"
 description = "Example project to run dagster and launch a job in nomad"
 authors = [
     "Bruno Bonfils <asyd@asyd.net>",
