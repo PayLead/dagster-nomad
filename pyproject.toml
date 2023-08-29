@@ -12,14 +12,14 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.11"
-dagster-nomad = {path = "dagster-nomad", develop = true}
 dagster = "^1.4.7"
-dagster-webserver = "^1.4.7"
 dagster-aws = "^0.20.7"
+dagster-nomad = {path = "dagster-nomad", develop = true}
 dagster-postgres = "^0.20.7"
-pandas = "^2.0.3"
+dagster-webserver = "^1.4.7"
 httpx = "^0.24.1"
-
+pandas = "^2.0.3"
+rich = "^13.5.2"
 
 [build-system]
 requires = ["poetry-core"]

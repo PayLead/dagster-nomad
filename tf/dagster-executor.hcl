@@ -4,6 +4,7 @@ job "dagster-executor" {
 
   parameterized {
     payload = "required"
+    meta_required = ["IMAGE"]
   }
 
   task "server" {
@@ -14,7 +15,7 @@ job "dagster-executor" {
     }
 
     config {
-      image = "dagster-nomad-example:local"
+      image = "$${NOMAD_META_IMAGE}"
       entrypoint = [ "/dagster_job.sh" ]
       args = [ "$${NOMAD_TASK_DIR}/input.txt" ]
     }

@@ -2,3 +2,9 @@ load_from:
   - python_module:
       module_name: user_code.defs
       location_name: main
+
+# load_from:
+#   - grpc_server:
+#       host: localhost
+#       port: 4266
+#       location_name: "main"

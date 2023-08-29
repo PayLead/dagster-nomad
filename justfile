@@ -37,6 +37,10 @@ dagster-dev:
     docker compose up -d
     DAGSTER_HOME="$PWD/dagster" dagster dev
 
+dagster-grpc:
+    source .venv/bin/activate
+    dagster api grpc --module-name user_code.defs --host 0.0.0.0 --port 4266
+
 ### Launch Nomad Cluster ###
 nomad-up:
     nomad agent -dev -node pynomad1
