@@ -40,3 +40,26 @@ just dagster-dev
 ```
 
 Open in your browser [dagster-webserver](http://127.0.0.1:3000) and [nomad-ui](http://127.0.0.1:4647)
+
+## Multiple Code Locations example
+
+Following the convention for the `DockerRunLauncher` and `K8sRunLauncher`,
+the `DAGSTER_CURRENT_IMAGE` environment variable [can used to specify the Docker image](https://docs.dagster.io/concepts/code-locations/workspace-files#specifying-a-docker-image) for the `NomadRunLauncher` to use.
+
+Build the different images for your code locations.
+
+```shell
+docker build . --tag dagster-nomad-example:local
+```
+
+Launch the multiple code locations:
+
+```shell
+DAGSTER_CURRENT_IMAGE=dagster-nomad-example:local  just dagster-grpc
+```
+
+Uncomment the `load_from.grpc_server` in the `workspace.yaml` files
+
+```shell
+just dagster-dev
+```

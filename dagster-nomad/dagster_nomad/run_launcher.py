@@ -106,6 +106,7 @@ class NomadRunLauncher(RunLauncher[T_DagsterInstance], ConfigurableClass):
         self,
         inst_data: Optional[ConfigurableClassData] = None,
         *,
+        docker_image: str | None = None,
         job_id: str,
         url: str,
         token: str | None = None,
@@ -113,6 +114,7 @@ class NomadRunLauncher(RunLauncher[T_DagsterInstance], ConfigurableClass):
     ):
         self._inst_data = inst_data
 
+        self.docker_image = docker_image
         self.nomad_job_id = job_id
         self.nomad_client = NomadClient(url, token, namespace)
 
@@ -128,10 +130,31 @@ class NomadRunLauncher(RunLauncher[T_DagsterInstance], ConfigurableClass):
     @classmethod
     def config_type(cls) -> dict[str, Field]:
         return {
-            "job_id": Field(StringSource, is_required=True),
-            "url": Field(StringSource, is_required=True),
-            "token": Field(StringSource, is_required=False),
-            "namespace": Field(StringSource, is_required=False),
+            "docker_image": Field(
+                str,
+                is_required=False,
+                description="The docker image to be used if the repository does not specify one.",
+            ),
+            "job_id": Field(
+                StringSource,
+                is_required=True,
+                description="The Nomad job ID to dispatch.",
+            ),
+            "url": Field(
+                StringSource,
+                is_required=True,
+                description="The Nomad HTTP API URL.",
+            ),
+            "token": Field(
+                StringSource,
+                is_required=False,
+                description="The Nomad token.",
+            ),
+            "namespace": Field(
+                StringSource,
+                is_required=False,
+                description="The Nomad namespace of the job.",
+            ),
         }
 
     @staticmethod
@@ -141,9 +164,21 @@ class NomadRunLauncher(RunLauncher[T_DagsterInstance], ConfigurableClass):
     def _get_command_args(self, run_args: ExecuteRunArgs, context: LaunchRunContext):
         return run_args.get_command_args()
 
+    def _get_docker_image(self, job_code_origin):
+        docker_image = job_code_origin.repository_origin.container_image
+
+        if not docker_image:
+            docker_image = self.docker_image
+
+        if not docker_image:
+            raise Exception("No docker image specified by the instance config or repository")
+
+        return docker_image
+
     def launch_run(self, context: LaunchRunContext) -> None:
         run = context.dagster_run
         job_origin = check.not_none(context.job_code_origin)
+        docker_image = self._get_docker_image(job_origin)
 
         args = ExecuteRunArgs(
             job_origin=job_origin,
@@ -153,7 +188,7 @@ class NomadRunLauncher(RunLauncher[T_DagsterInstance], ConfigurableClass):
         command = self._get_command_args(args, context)
         payload = "\n".join(command)
 
-        meta = {}  # Currently only the image from the job spec is passed as metadata
+        meta = {"IMAGE": docker_image}
         dispatched_job_id = self.nomad_client.dispatch_job(self.nomad_job_id, payload=payload, meta=meta)
 
         self._instance.report_engine_event(
@@ -218,6 +253,7 @@ class NomadRunLauncher(RunLauncher[T_DagsterInstance], ConfigurableClass):
     def resume_run(self, context: ResumeRunContext) -> None:
         run = context.dagster_run
         job_origin = check.not_none(context.job_code_origin)
+        docker_image = self._get_docker_image(job_origin)
 
         args = ExecuteRunArgs(
             job_origin=job_origin,
@@ -227,7 +263,8 @@ class NomadRunLauncher(RunLauncher[T_DagsterInstance], ConfigurableClass):
         command = args.get_command_args()
 
         payload = "\n".join(command)
-        meta = {}  # Currently only the image from the job spec is passed as metadata
+        meta = {"IMAGE": docker_image}
+
         dispatched_job_id = self.nomad_client.dispatch_job(self.nomad_job_id, payload=payload, meta=meta)
 
         self._instance.report_engine_event(
