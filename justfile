@@ -11,7 +11,7 @@ export DAGSTER_S3_ENDPOINT_URL := "http://minio:9000"
 ### Python Virtual environment Setup ###
 setup-dev:
     source .venv/bin/activate
-    poetry install
+    poetry install --with dev
 
 quality-format:
     ruff --fix-only --exit-zero .
