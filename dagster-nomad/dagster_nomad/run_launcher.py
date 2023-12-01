@@ -131,7 +131,7 @@ class NomadRunLauncher(RunLauncher[T_DagsterInstance], ConfigurableClass):
     def config_type(cls) -> dict[str, Field]:
         return {
             "docker_image": Field(
-                str,
+                StringSource,
                 is_required=False,
                 description="The docker image to be used if the repository does not specify one.",
             ),
