@@ -2,8 +2,11 @@
 
 FROM python:3.11.2-slim-bullseye AS base
 
-ARG POETRY_VERSION=1.3.1
-ARG POETRY_HOME=/opt/poetry
+# Copy from the cache instead of linking since it's a mounted volume
+ENV UV_LINK_MODE=copy
+ENV PATH=/bin:/usr/bin:/usr/sbin:/usr/local/bin
+# Make uv install to system rather in a virtual environment
+ENV UV_PROJECT_ENVIRONMENT=/usr/local
 
 # configure python
 ENV \
@@ -24,22 +27,27 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false \
     && rm -rf /var/lib/apt/lists/*
 
-# install & configure poetry
-RUN python -m venv ${POETRY_HOME} \
-    && ${POETRY_HOME}/bin/pip install poetry==${POETRY_VERSION} \
-    && touch ${POETRY_HOME}/poetry_env \
-    && ln -s ${POETRY_HOME}/bin/poetry /usr/local/bin/poetry
-ENV \
-    POETRY_VIRTUALENVS_CREATE=false
+# Install UV
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh -s -- -v
 
+ENV PATH="/root/.local/bin/:$PATH"
+
+# Install the project's dependencies using the lockfile and settings
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --frozen --no-install-project
+
+ADD . /app
 
 FROM base
 
 WORKDIR /app
 
-COPY pyproject.toml poetry.lock /app/
 COPY dagster-nomad /app/dagster-nomad
-RUN --mount=type=cache,target=/root/.cache,sharing=locked poetry install --no-root
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen
 
 COPY user_code/ user_code/
 
