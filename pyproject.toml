@@ -1,33 +1,17 @@
-[tool.poetry]
-name = "dagster-nomad-example"
-version = "0.0.0.post2.dev0+3f759bf"
-description = "Example project to run dagster and launch a job in nomad"
-authors = [
-    "Bruno Bonfils <asyd@asyd.net>",
-    "Thomas Aubry <github.thomaub@gmail.com>",
-    "Thomas Berdy <thomas.berdy@outlook.com>"
-]
-license = "Apache-2.0"
+[project]
+name = "dagster-nomad-demo"
+version = "1.0.0"
 readme = "README.md"
+requires-python = ">=3.11"
 
-[tool.poetry.dependencies]
-python = "^3.11"
-dagster = "^1.4.7"
-dagster-aws = "^0.20.7"
-dagster-nomad = {path = "dagster-nomad", develop = true}
-dagster-postgres = "^0.20.7"
-dagster-webserver = "^1.4.7"
-httpx = "^0.24.1"
-pandas = "^2.0.3"
-rich = "^13.5.2"
-
-[tool.poetry.group.dev.dependencies]
-ruff = "^0.0.287"
-black = "^23.7.0"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+dependencies = [
+    "dagster-aws~=0.20",
+    "dagster~=1.9.2",
+    "dagster-postgres~=0.20",
+    "dagster-webserver~=1.9.2",
+    "httpx~=0.24.1",
+    "dagster-nomad",
+]
 
 [tool.black]
 line-length = 120
@@ -59,4 +43,20 @@ exclude = [
     "build",
     "dist",
     "venv",
+]
+
+[tool.uv.workspace]
+members = [
+    "dagster-nomad",
+]
+
+[tool.uv.sources]
+dagster-nomad = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "black>=25.1.0",
+    "pandas>=2.2.3",
+    "rich>=14.0.0",
+    "ruff>=0.11.6",
 ]

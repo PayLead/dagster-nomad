@@ -7,22 +7,23 @@ export DAGSTER_NOMAD_URL :=  "http://127.0.0.1:4646"
 export DAGSTER_POSTGRES_DSN := "postgresql://dagster:dagster@localhost:5432/dagster"
 export DAGSTER_S3_BUCKET := "dagster"
 export DAGSTER_S3_ENDPOINT_URL := "http://minio:9000"
+export DAGSTER_CURRENT_IMAGE := "dagster-nomad-example:local"
 
 ### Python Virtual environment Setup ###
 setup-dev:
     source .venv/bin/activate
-    poetry install --with dev
+    uv sync
 
 quality-format:
-    ruff --fix-only --exit-zero .
-    black .
+    uv run ruff format --fix-only --exit-zero .
+    uv run black .
 
 quality-check:
-    ruff .
-    black . --check
+    uv run ruff check .
+    uv run black . --check
 
 check-pkg-constraints:
-	poetry lock --check
+    uv lock --check
 
 ### Launch Dagster postgres ###
 docker-up:
@@ -33,6 +34,7 @@ docker-down:
 
 ### Launch Dagster ###
 dagster-dev:
+    #!/usr/bin/env bash
     source .venv/bin/activate
     docker compose up -d
     DAGSTER_HOME="$PWD/dagster" dagster dev
@@ -52,7 +54,7 @@ terraform-setup:
     cd tf
     cp local.tf.example local.tf
     terraform init
-    terraform apply
+    terraform apply -auto-approve
 
 terraform-up:
     #!/usr/bin/env bash
