@@ -1,6 +1,6 @@
 [project]
 name = "dagster-nomad"
-version = "0.0.1"
+version = "0.1.0"
 description = "Dagster integration library for Nomad"
 readme = "README.md"
 authors = [

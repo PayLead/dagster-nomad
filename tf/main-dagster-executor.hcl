@@ -1,4 +1,4 @@
-job "${name}" {
+job "main-dagster-executor" {
   datacenters = ["dc1"]
   type = "batch"
 
