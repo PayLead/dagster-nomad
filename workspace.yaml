@@ -2,7 +2,9 @@ load_from:
   - python_module:
       module_name: user_code.defs
       location_name: main
-
+  - python_module:
+      module_name: user_code_demo.defs
+      location_name: demo
 # load_from:
 #   - grpc_server:
 #       host: localhost

@@ -7,10 +7,13 @@ run_launcher:
   module: dagster_nomad
   class: NomadRunLauncher
   config:
+    # if true, code location name will used as prefix, followed by a -
+    prefix_by_code_location_name: true
     job_id:
       env: DAGSTER_NOMAD_JOB_ID
     url:
       env: DAGSTER_NOMAD_URL
+
 
 compute_logs:
   module: dagster_aws.s3.compute_log_manager

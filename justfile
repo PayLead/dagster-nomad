@@ -15,7 +15,7 @@ setup-dev:
     uv sync
 
 quality-format:
-    uv run ruff format --fix-only --exit-zero .
+    uv run ruff format
     uv run black .
 
 quality-check:

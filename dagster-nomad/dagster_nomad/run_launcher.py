@@ -5,7 +5,7 @@ from collections.abc import Generator
 from typing import Any, ClassVar, Optional
 
 import httpx
-from dagster import Field, StringSource
+from dagster import Field, StringSource, BoolSource
 from dagster import _check as check
 from dagster._core.instance import T_DagsterInstance
 from dagster._core.launcher import LaunchRunContext, RunLauncher
@@ -107,13 +107,14 @@ class NomadRunLauncher(RunLauncher[T_DagsterInstance], ConfigurableClass):
         inst_data: Optional[ConfigurableClassData] = None,
         *,
         docker_image: str | None = None,
+        prefix_by_code_location_name: bool = False,
         job_id: str,
         url: str,
         token: str | None = None,
         namespace: str | None = None,
     ):
         self._inst_data = inst_data
-
+        self.prefix_by_code_location_name = prefix_by_code_location_name
         self.docker_image = docker_image
         self.nomad_job_id = job_id
         self.nomad_client = NomadClient(url, token, namespace)
@@ -134,6 +135,11 @@ class NomadRunLauncher(RunLauncher[T_DagsterInstance], ConfigurableClass):
                 str,
                 is_required=False,
                 description="The docker image to be used if the repository does not specify one.",
+            ),
+            "prefix_by_code_location_name": Field(
+                BoolSource,
+                is_required=False,
+                description="If true, Nomad job name will be prefixed by code location name",
             ),
             "job_id": Field(
                 StringSource,
@@ -189,7 +195,14 @@ class NomadRunLauncher(RunLauncher[T_DagsterInstance], ConfigurableClass):
         payload = "\n".join(command)
 
         meta = {"IMAGE": docker_image}
-        dispatched_job_id = self.nomad_client.dispatch_job(self.nomad_job_id, payload=payload, meta=meta)
+
+        job_id = self.nomad_job_id
+        if self.prefix_by_code_location_name:
+            job_id = "{}-{}".format(
+                context.dagster_run.remote_job_origin.repository_origin.code_location_origin.location_name,
+                self.nomad_job_id,
+            )
+        dispatched_job_id = self.nomad_client.dispatch_job(job_id, payload=payload, meta=meta)
 
         self._instance.report_engine_event(
             message=f"Dispatched a new run for job `{self.nomad_job_id}` with dispatched_job_id `{dispatched_job_id}`",
@@ -269,8 +282,7 @@ class NomadRunLauncher(RunLauncher[T_DagsterInstance], ConfigurableClass):
 
         self._instance.report_engine_event(
             message=(
-                f"Dispatched a new resume_run for job `{self.nomad_job_id}`"
-                f"with dispatched_job_id `{dispatched_job_id}`"
+                f"Dispatched a new resume_run for job `{self.nomad_job_id}`with dispatched_job_id `{dispatched_job_id}`"
             ),
             dagster_run=run,
             cls=self.__class__,

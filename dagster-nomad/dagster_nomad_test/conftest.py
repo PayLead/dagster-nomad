@@ -4,6 +4,7 @@ Pytest fixtures and helpers for testing Dagster Nomad integration
 Most of the code is adapted from dagster-aws
 See: dagster-aws/dagster_aws_tests/ecs_tests/launcher_tests/conftest.py
 """
+
 from typing import Iterator
 
 import pytest
