@@ -5,11 +5,11 @@ readme = "README.md"
 requires-python = ">=3.11"
 
 dependencies = [
-    "dagster-aws~=0.20",
-    "dagster~=1.9.2",
-    "dagster-postgres~=0.20",
-    "dagster-webserver~=1.9.2",
-    "httpx~=0.24.1",
+    "dagster-aws~=0.26.17",
+    "dagster~=1.10.17",
+    "dagster-postgres~=0.26.17",
+    "dagster-webserver~=1.10.17",
+    "httpx~=0.28.1",
     "dagster-nomad",
 ]
 
@@ -46,17 +46,10 @@ exclude = [
 ]
 
 [tool.uv.workspace]
-members = [
-    "dagster-nomad",
-]
+members = ["dagster-nomad"]
 
 [tool.uv.sources]
 dagster-nomad = { workspace = true }
 
 [dependency-groups]
-dev = [
-    "black>=25.1.0",
-    "pandas>=2.2.3",
-    "rich>=14.0.0",
-    "ruff>=0.11.6",
-]
+dev = ["black>=25.1.0", "pandas>=2.2.3", "rich>=14.0.0", "ruff>=0.11.6"]

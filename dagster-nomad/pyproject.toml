@@ -4,30 +4,26 @@ version = "0.0.1"
 description = "Dagster integration library for Nomad"
 readme = "README.md"
 authors = [
-    "Bruno Bonfils <asyd@asyd.net>",
-    "Thomas Aubry <github.thomaub@gmail.com>",
-    "Thomas Berdy <thomas.berdy@outlook.com>"
+    { name = "Bruno Bonfils", email = "asyd@asyd.net" },
+    { name = "Thomas Aubry", email = "github.thomaub@gmail.com" },
+    { name = "Thomas Berdy", email = "thomas.berdy@outlook.com" },
 ]
-packages = [{include = "dagster_nomad"}]
-repository = "https://github.com/paylead/dagster-nomad"
-keywords = [
-    "dagster",
-    "nomad",
-    "run launcher",
-]
+keywords = ["dagster", "nomad", "run launcher"]
 classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
-    "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
-license = "Apache-2.0"
+license = { text = "Apache-2.0" }
 requires-python = ">=3.11"
-dependencies = [
-    "dagster>=1.9.13",
-    "httpx>=0.24.1",
-]
+dependencies = ["dagster>=1.9.17", "httpx>=0.28.0"]
+
+[project.urls]
+Repository = "https://github.com/paylead/dagster-nomad"
+
+[tool.setuptools.packages.find]
+include = ["dagster_nomad*"]
 
 [tool.pytest.ini_options]
 log_cli = true
@@ -52,10 +48,7 @@ exclude = '''
 
 [tool.ruff]
 line-length = 120
-src = [
-    "dagster_nomad",
-    "tests"
-]
+src = ["dagster_nomad", "tests"]
 exclude = [
     ".direnv",
     ".eggs",
@@ -69,7 +62,7 @@ exclude = [
     "venv",
 ]
 
-[tool.lint.isort]
+[tool.ruff.lint.isort]
 known-first-party = ["dagster_nomad", "tests"]
 
 [tool.pyright]
@@ -79,10 +72,7 @@ reportWildcardImportFromLibrary = true
 reportUntypedFunctionDecorator = true
 reportUntypedClassDecorator = true
 
-include = [
-    "dagster_nomad`",
-    "tests"
-]
+include = ["dagster_nomad", "tests"]
 
 exclude = [
     ".direnv",
@@ -96,4 +86,3 @@ exclude = [
     "dist",
     "venv",
 ]
-
