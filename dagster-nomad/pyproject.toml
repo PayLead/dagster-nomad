@@ -23,7 +23,7 @@ dependencies = ["dagster>=1.9.17", "httpx>=0.28.0"]
 Repository = "https://github.com/paylead/dagster-nomad"
 
 [tool.setuptools.packages.find]
-include = ["dagster_nomad*"]
+include = ["dagster_nomad", "dagster_nomad.*"]
 
 [tool.pytest.ini_options]
 log_cli = true
