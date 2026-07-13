@@ -1,6 +1,6 @@
 # syntax = docker/dockerfile:1.4
 
-FROM python:3.11.2-slim-bullseye AS base
+FROM python:3.13-slim-trixie AS base
 
 # Copy from the cache instead of linking since it's a mounted volume
 ENV UV_LINK_MODE=copy
@@ -24,6 +24,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         build-essential \
         curl \
         git \
+        libpq-dev \
     && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false \
     && rm -rf /var/lib/apt/lists/*
 
@@ -36,7 +37,7 @@ ENV PATH="/root/.local/bin/:$PATH"
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --frozen --no-install-project
+    uv sync --frozen --no-install-workspace
 
 ADD . /app
 
