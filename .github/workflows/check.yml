@@ -17,21 +17,19 @@ jobs:
         py:
           - "3.10"
           - "3.11"
+          - "3.12"
+          - "3.13"
+          - "3.14"
     steps:
       - name: Setup python for test ${{ matrix.py }}
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.py }}
       - uses: actions/checkout@v2
-      - name: Install and configure Poetry
-        uses: snok/install-poetry@v1
-        with:
-          version: 1.4.2
-          virtualenvs-create: false
-          virtualenvs-in-project: false
-          installer-parallel: true
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
       - name: Install dependencies
-        run: cd dagster-nomad && poetry install
+        run: cd dagster-nomad && uv sync
       - name: Run tests
         run: cd dagster-nomad && pytest -v .
 
@@ -46,21 +44,19 @@ jobs:
         py:
           - "3.10"
           - "3.11"
+          - "3.12"
+          - "3.13"
+          - "3.14"
     steps:
       - name: Setup python for test ${{ matrix.py }}
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.py }}
       - uses: actions/checkout@v2
-      - name: Install and configure Poetry
-        uses: snok/install-poetry@v1
-        with:
-          version: 1.4.2
-          virtualenvs-create: false
-          virtualenvs-in-project: false
-          installer-parallel: true
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
       - uses: taiki-e/install-action@just
       - name: Install dependencies
-        run: cd dagster-nomad && poetry install
+        run: cd dagster-nomad && uv sync
       - name: Run lint
         run: just quality-check
