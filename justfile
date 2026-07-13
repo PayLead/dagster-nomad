@@ -11,7 +11,6 @@ export DAGSTER_CURRENT_IMAGE := "dagster-nomad-example:local"
 
 ### Python Virtual environment Setup ###
 setup-dev:
-    source .venv/bin/activate
     uv sync
 
 quality-format:
@@ -40,8 +39,7 @@ dagster-dev:
     DAGSTER_HOME="$PWD/dagster" dagster dev
 
 dagster-grpc:
-    source .venv/bin/activate
-    dagster api grpc --module-name user_code.defs --host 0.0.0.0 --port 4266
+    uv run dagster api grpc --module-name user_code.defs --host 0.0.0.0 --port 4266
 
 ### Launch Nomad Cluster ###
 nomad-up:
