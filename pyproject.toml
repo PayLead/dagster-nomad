@@ -52,4 +52,10 @@ members = ["dagster-nomad"]
 dagster-nomad = { workspace = true }
 
 [dependency-groups]
-dev = ["black>=25.1.0", "pandas>=2.2.3", "rich>=14.0.0", "ruff>=0.11.6"]
+dev = [
+    "black>=25.1.0",
+    "pandas>=2.2.3",
+    "pytest>=9.1.1",
+    "rich>=14.0.0",
+    "ruff>=0.11.6",
+]
