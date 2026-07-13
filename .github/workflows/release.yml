@@ -12,28 +12,18 @@ jobs:
   # workflow passing.
   publish:
     name: Publish to PyPI
-    strategy:
-      fail-fast: false
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - name: Setup Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
-      - uses: actions/checkout@v2
-      - name: Install and configure Poetry
-        uses: snok/install-poetry@v1
-        with:
-          version: 1.4.2
-          virtualenvs-create: false
-          virtualenvs-in-project: false
-          installer-parallel: true
-      - name: Install poetry-dynamic-versioning
-        run: poetry self add poetry-dynamic-versioning@1.0.1
+          python-version: '3.13'
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+      - name: Build package
+        run: cd dagster-nomad && uv build
       - name: Publish to PyPI
         env:
-          PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
-        run: |
-          cd dagster-nomad
-          poetry config pypi-token.pypi $PYPI_TOKEN
-          poetry publish --build
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
+        run: uv publish

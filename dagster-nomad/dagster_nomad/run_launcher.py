@@ -5,7 +5,7 @@ from collections.abc import Generator
 from typing import Any, ClassVar, Optional
 
 import httpx
-from dagster import Field, StringSource
+from dagster import Field, Map, StringSource
 from dagster import _check as check
 from dagster._core.instance import T_DagsterInstance
 from dagster._core.launcher import LaunchRunContext, RunLauncher
@@ -108,6 +108,7 @@ class NomadRunLauncher(RunLauncher[T_DagsterInstance], ConfigurableClass):
         *,
         docker_image: str | None = None,
         job_id: str,
+        job_id_mapping: dict[str, str] | None = None,
         url: str,
         token: str | None = None,
         namespace: str | None = None,
@@ -116,6 +117,7 @@ class NomadRunLauncher(RunLauncher[T_DagsterInstance], ConfigurableClass):
 
         self.docker_image = docker_image
         self.nomad_job_id = job_id
+        self.nomad_job_id_mapping = job_id_mapping or {}
         self.nomad_client = NomadClient(url, token, namespace)
 
         super().__init__()
@@ -138,7 +140,12 @@ class NomadRunLauncher(RunLauncher[T_DagsterInstance], ConfigurableClass):
             "job_id": Field(
                 StringSource,
                 is_required=True,
-                description="The Nomad job ID to dispatch.",
+                description="The default Nomad job ID to dispatch, can be override by code location using job_id_mapping.",
+            ),
+            "job_id_mapping": Field(
+                Map(str, str),
+                is_required=False,
+                description="An optional mapping between code location name and nomad job.",
             ),
             "url": Field(
                 StringSource,
@@ -175,10 +182,18 @@ class NomadRunLauncher(RunLauncher[T_DagsterInstance], ConfigurableClass):
 
         return docker_image
 
+    def _get_nomad_job_id(self, run: DagsterRun) -> str:
+        remote_job_origin = run.remote_job_origin
+        if remote_job_origin is None:
+            return self.nomad_job_id
+
+        return self.nomad_job_id_mapping.get(remote_job_origin.location_name, self.nomad_job_id)
+
     def launch_run(self, context: LaunchRunContext) -> None:
         run = context.dagster_run
         job_origin = check.not_none(context.job_code_origin)
         docker_image = self._get_docker_image(job_origin)
+        nomad_job_id = self._get_nomad_job_id(run)
 
         args = ExecuteRunArgs(
             job_origin=job_origin,
@@ -189,10 +204,10 @@ class NomadRunLauncher(RunLauncher[T_DagsterInstance], ConfigurableClass):
         payload = "\n".join(command)
 
         meta = {"IMAGE": docker_image}
-        dispatched_job_id = self.nomad_client.dispatch_job(self.nomad_job_id, payload=payload, meta=meta)
+        dispatched_job_id = self.nomad_client.dispatch_job(nomad_job_id, payload=payload, meta=meta)
 
         self._instance.report_engine_event(
-            message=f"Dispatched a new run for job `{self.nomad_job_id}` with dispatched_job_id `{dispatched_job_id}`",
+            message=f"Dispatched a new run for job `{nomad_job_id}` with dispatched_job_id `{dispatched_job_id}`",
             dagster_run=run,
             cls=self.__class__,
         )
@@ -254,6 +269,7 @@ class NomadRunLauncher(RunLauncher[T_DagsterInstance], ConfigurableClass):
         run = context.dagster_run
         job_origin = check.not_none(context.job_code_origin)
         docker_image = self._get_docker_image(job_origin)
+        nomad_job_id = self._get_nomad_job_id(run)
 
         args = ExecuteRunArgs(
             job_origin=job_origin,
@@ -265,12 +281,11 @@ class NomadRunLauncher(RunLauncher[T_DagsterInstance], ConfigurableClass):
         payload = "\n".join(command)
         meta = {"IMAGE": docker_image}
 
-        dispatched_job_id = self.nomad_client.dispatch_job(self.nomad_job_id, payload=payload, meta=meta)
+        dispatched_job_id = self.nomad_client.dispatch_job(nomad_job_id, payload=payload, meta=meta)
 
         self._instance.report_engine_event(
             message=(
-                f"Dispatched a new resume_run for job `{self.nomad_job_id}`"
-                f"with dispatched_job_id `{dispatched_job_id}`"
+                f"Dispatched a new resume_run for job `{nomad_job_id}`with dispatched_job_id `{dispatched_job_id}`"
             ),
             dagster_run=run,
             cls=self.__class__,

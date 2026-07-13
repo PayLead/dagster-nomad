@@ -4,13 +4,14 @@ Pytest fixtures and helpers for testing Dagster Nomad integration
 Most of the code is adapted from dagster-aws
 See: dagster-aws/dagster_aws_tests/ecs_tests/launcher_tests/conftest.py
 """
+
 from typing import Iterator
 
 import pytest
 from dagster import job, op, repository
 from dagster._core.definitions.job_definition import JobDefinition
-from dagster._core.host_representation.external import ExternalJob
 from dagster._core.instance import DagsterInstance
+from dagster._core.remote_representation.external import RemoteJob
 from dagster._core.storage.dagster_run import DagsterRun
 from dagster._core.test_utils import in_process_test_workspace
 from dagster._core.types.loadable_target_origin import LoadableTargetOrigin
@@ -29,7 +30,7 @@ def job_def():
 
 @repository
 def repository():
-    return {"jobs": {"job": job_def}}
+    return {"jobs": {job_def.name: job_def}}
 
 
 @pytest.fixture
@@ -38,18 +39,18 @@ def job() -> JobDefinition:
 
 
 @pytest.fixture
-def run(instance: DagsterInstance, job: JobDefinition, external_job: ExternalJob) -> DagsterRun:
+def run(instance: DagsterInstance, job: JobDefinition, external_job: RemoteJob) -> DagsterRun:
     return instance.create_run_for_job(
         job_def,
-        external_job_origin=external_job.get_external_origin(),
+        remote_job_origin=external_job.get_remote_origin(),
         job_code_origin=external_job.get_python_origin(),
     )
 
 
 @pytest.fixture
-def external_job(workspace: WorkspaceRequestContext) -> ExternalJob:
+def external_job(workspace: WorkspaceRequestContext) -> RemoteJob:
     location = workspace.get_code_location(workspace.code_location_names[0])
-    return location.get_repository(repository.name).get_full_external_job(job_def.name)
+    return location.get_repository(repository.name).get_full_job(job_def.name)
 
 
 @pytest.fixture

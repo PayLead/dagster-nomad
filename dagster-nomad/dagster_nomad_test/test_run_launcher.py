@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from dagster._core.instance import DagsterInstance
+from dagster._core.remote_origin import IN_PROCESS_NAME
 from dagster._core.test_utils import instance_for_test
 
 from dagster_nomad.run_launcher import NomadClient
@@ -36,12 +37,14 @@ def instance_cm() -> Callable[..., ContextManager[DagsterInstance]]:
 
 @pytest.fixture
 def instance(
-    instance_cm: Callable[..., ContextManager[DagsterInstance]], mock_nomad_client
+    instance_cm: Callable[..., ContextManager[DagsterInstance]], mock_nomad_client, request
 ) -> Iterator[DagsterInstance]:
+    config = getattr(request, "param", {})
     with instance_cm(
         {
             "job_id": "test_job",
             "url": "http://nomad.example.com",
+            **config,
         }
     ) as dagster_instance:
         yield dagster_instance
@@ -49,6 +52,30 @@ def instance(
 
 class TestNomadRunLauncher:
     def test_launch_run(self, instance, workspace, run, mock_nomad_client):
+        instance.run_launcher.nomad_client = mock_nomad_client
+        instance.launch_run(run.run_id, workspace)
+
+        assert mock_nomad_client.dispatch_job.call_count == 1
+        assert mock_nomad_client.dispatch_job.call_args_list[0][0][0] == "test_job"
+
+    @pytest.mark.parametrize(
+        "instance",
+        [{"job_id_mapping": {IN_PROCESS_NAME: "mapped_job"}}],
+        indirect=True,
+    )
+    def test_launch_run_with_job_id_mapping(self, instance, workspace, run, mock_nomad_client):
+        instance.run_launcher.nomad_client = mock_nomad_client
+        instance.launch_run(run.run_id, workspace)
+
+        assert mock_nomad_client.dispatch_job.call_count == 1
+        assert mock_nomad_client.dispatch_job.call_args_list[0][0][0] == "mapped_job"
+
+    @pytest.mark.parametrize(
+        "instance",
+        [{"job_id_mapping": {"some_other_location": "mapped_job"}}],
+        indirect=True,
+    )
+    def test_launch_run_with_job_id_mapping_no_match(self, instance, workspace, run, mock_nomad_client):
         instance.run_launcher.nomad_client = mock_nomad_client
         instance.launch_run(run.run_id, workspace)
 
