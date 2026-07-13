@@ -1,6 +1,6 @@
 [project]
 name = "dagster-nomad"
-version = "0.0.1"
+version = "0.1.0"
 description = "Dagster integration library for Nomad"
 readme = "README.md"
 authors = [
@@ -15,7 +15,7 @@ classifiers = [
     "Operating System :: OS Independent",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
-license = { text = "Apache-2.0" }
+license = "Apache-2.0"
 requires-python = ">=3.11"
 dependencies = ["dagster>=1.9.17", "httpx>=0.28.0"]
 
