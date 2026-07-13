@@ -5,10 +5,10 @@ readme = "README.md"
 requires-python = ">=3.11"
 
 dependencies = [
-    "dagster-aws~=0.26.17",
-    "dagster~=1.10.17",
-    "dagster-postgres~=0.26.17",
-    "dagster-webserver~=1.10.17",
+    "dagster-aws~=0.29.13",
+    "dagster~=1.13.13",
+    "dagster-postgres~=0.29.13",
+    "dagster-webserver~=1.13.13",
     "httpx~=0.28.1",
     "dagster-nomad",
 ]
