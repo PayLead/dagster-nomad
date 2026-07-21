@@ -79,8 +79,11 @@ class NomadClient(httpx.Client):
         res.raise_for_status()
 
         data = res.json()
-        state: str = data[0]["TaskStates"]["server"]["State"]
-        failed: bool = data[0]["TaskStates"]["server"]["Failed"]
+        # There is no reason to have multiple task inside a dagster job (from nomad point of view)
+        # so we use the first one
+        task = list(data[0]["TaskStates"])[0]
+        state: str = data[0]["TaskStates"][task]["State"]
+        failed: bool = data[0]["TaskStates"][task]["Failed"]
 
         return state, failed
 
@@ -248,7 +251,12 @@ class NomadRunLauncher(RunLauncher[T_DagsterInstance], ConfigurableClass):
 
         try:
             state, failed = self.nomad_client.get_job_status(dispatched_job_id)
-        except httpx.HTTPError:
+        except httpx.HTTPError as exc:
+            self._instance.report_engine_event(
+                message=f"Failed to get run status of dispatched_job_id `{dispatched_job_id}`: `{exc}",
+                dagster_run=run,
+                cls=self.__class__,
+            )
             return CheckRunHealthResult(WorkerStatus.NOT_FOUND)
 
         match (state, failed):
@@ -259,6 +267,11 @@ class NomadRunLauncher(RunLauncher[T_DagsterInstance], ConfigurableClass):
             case ("dead", False):
                 return CheckRunHealthResult(WorkerStatus.SUCCESS)
             case _:
+                self._instance.report_engine_event(
+                    message=f"Failed to get run status of dispatched_job_id `{dispatched_job_id}`",
+                    dagster_run=run,
+                    cls=self.__class__,
+                )
                 return CheckRunHealthResult(WorkerStatus.UNKNOWN)
 
     @property
