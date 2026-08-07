@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 from collections.abc import Generator
 from typing import Any, ClassVar, Optional
+from enum import StrEnum
 
 import httpx2
 from dagster import Field, Map, StringSource
@@ -18,6 +19,12 @@ from dagster._core.storage.dagster_run import DagsterRun
 from dagster._grpc.types import ExecuteRunArgs
 from dagster._serdes import ConfigurableClass
 from dagster._serdes.config_class import ConfigurableClassData
+
+
+class NomadTaskState(StrEnum):
+    PENDING = "pending"
+    RUNNING = "running"
+    DEAD = "dead"
 
 
 class NomadAuth(httpx2.Auth):
@@ -39,6 +46,9 @@ class NomadClient(httpx2.Client):
         kwargs.setdefault("auth", NomadAuth(token))
         if namespace:
             kwargs.setdefault("params", {"namespace": namespace})
+
+        kwargs.setdefault("timeout", httpx2.Timeout(10.0))
+        kwargs.setdefault("transport", httpx2.HTTPTransport(retries=2))
 
         super().__init__(headers={"Content-Type": "application/json"}, base_url=url, **kwargs)
 
@@ -65,27 +75,39 @@ class NomadClient(httpx2.Client):
         res.raise_for_status()
         return res.json()["DispatchedJobID"]
 
-    def get_job_status(self, job_id: str) -> tuple[str, str, bool]:
+    def get_job_status(self, job_id: str) -> tuple[str, NomadTaskState, bool] | None:
         """Retrieve the status of the provided job id.
 
         Args:
           job_id: The id of the job
 
         Returns:
-            A tuple with `state` and `failed`
+            A tuple with `alloc_id`, `state` and `failed`, or `None` if the job has been
+            garbage collected, which Nomad reports either as a 404 or as an empty
+            allocation list.
         """
 
         res = self.get(f"/v1/job/{job_id}/allocations")
+        if res.status_code == httpx2.codes.NOT_FOUND:
+            return None
         res.raise_for_status()
+        allocations = res.json()
+        if not allocations:
+            return None
 
-        data = res.json()
+        allocation = max(allocations, key=lambda alloc: alloc["CreateIndex"])
+        alloc_id: str = allocation["ID"]
+
+        task_states = allocation.get("TaskStates")
+        if not task_states:
+            # Equals to https://developer.hashicorp.com/nomad/api-docs/allocations#taskstatepending
+            return alloc_id, NomadTaskState.PENDING, False
+
         # There is no reason to have multiple task inside a dagster job (from nomad point of view)
         # so we use the first one
-        task = list(data[0]["TaskStates"])[0]
-        state: str = data[0]["TaskStates"][task]["State"]
-        failed: bool = data[0]["TaskStates"][task]["Failed"]
-
-        alloc_id = data[0]["ID"]
+        task = list(task_states)[0]
+        state: NomadTaskState = NomadTaskState(task_states[task]["State"])
+        failed: bool = task_states[task]["Failed"]
 
         return alloc_id, state, failed
 
@@ -222,12 +244,8 @@ class NomadRunLauncher(RunLauncher[T_DagsterInstance], ConfigurableClass):
         )
 
     def terminate(self, run_id: str) -> bool:
-        dispatched_job_id = None
-
-        run = self._instance.get_run_by_id(run_id)
-        run = check.not_none(run)
-        if run:
-            dispatched_job_id = self._instance.get_run_by_id(run_id)
+        run = check.not_none(self._instance.get_run_by_id(run_id))
+        dispatched_job_id = run.tags.get(self.NOMAD_DISPATCHED_JOB_ID_TAG)
 
         if dispatched_job_id is None:
             self._instance.report_engine_event(
@@ -236,8 +254,6 @@ class NomadRunLauncher(RunLauncher[T_DagsterInstance], ConfigurableClass):
                 cls=self.__class__,
             )
             return False
-
-        dispatched_job_id = run.tags.get(self.NOMAD_DISPATCHED_JOB_ID_TAG)
 
         self._instance.report_run_canceling(run)
         self.nomad_client.stop_job(dispatched_job_id)
@@ -250,36 +266,58 @@ class NomadRunLauncher(RunLauncher[T_DagsterInstance], ConfigurableClass):
 
     def check_run_worker_health(self, run: DagsterRun) -> CheckRunHealthResult:
         dispatched_job_id = run.tags.get(self.NOMAD_DISPATCHED_JOB_ID_TAG)
+        if dispatched_job_id is None:
+            return CheckRunHealthResult(
+                WorkerStatus.NOT_FOUND,
+                f"Run has no `{self.NOMAD_DISPATCHED_JOB_ID_TAG}` tag, no Nomad job was dispatched.",
+            )
 
         try:
-            alloc_id, state, failed = self.nomad_client.get_job_status(dispatched_job_id)
+            status = self.nomad_client.get_job_status(dispatched_job_id)
         except httpx2.HTTPError as exc:
             self._instance.report_engine_event(
-                message=f"Failed to get run status of dispatched_job_id `{dispatched_job_id}`: `{exc}",
+                message=f"Failed to get run status of dispatched_job_id `{dispatched_job_id}`: `{exc}`",
                 dagster_run=run,
                 cls=self.__class__,
             )
-            return CheckRunHealthResult(WorkerStatus.NOT_FOUND)
+            return CheckRunHealthResult(
+                WorkerStatus.RUNNING,
+                f"Could not reach Nomad to check dispatched_job_id `{dispatched_job_id}`: {exc}",
+                transient=True,
+            )
 
-        match (state, failed):
-            case ("running", _):
+        if status is None:
+            return CheckRunHealthResult(
+                WorkerStatus.NOT_FOUND,
+                f"Nomad job `{dispatched_job_id}` does not exist anymore, it was likely garbage collected.",
+            )
+
+        match status:
+            case (alloc_id, NomadTaskState.RUNNING, _):
                 self._instance.report_engine_event(
                     message=f"Job is running: `com.hashicorp.nomad.alloc_id: {alloc_id}`",
                     dagster_run=run,
                     cls=self.__class__,
                 )
                 return CheckRunHealthResult(WorkerStatus.RUNNING)
-            case ("dead", True):
-                return CheckRunHealthResult(WorkerStatus.FAILED)
-            case ("dead", False):
-                return CheckRunHealthResult(WorkerStatus.SUCCESS)
-            case _:
-                self._instance.report_engine_event(
-                    message=f"Failed to get run status of dispatched_job_id `{dispatched_job_id}`",
-                    dagster_run=run,
-                    cls=self.__class__,
+            case (_, NomadTaskState.PENDING, _):
+                return CheckRunHealthResult(WorkerStatus.RUNNING)
+            case (alloc_id, NomadTaskState.DEAD, True):
+                return CheckRunHealthResult(
+                    WorkerStatus.FAILED,
+                    f"Nomad task of dispatched_job_id `{dispatched_job_id}` failed "
+                    f"(com.hashicorp.nomad.alloc_id: {alloc_id}).",
                 )
-                return CheckRunHealthResult(WorkerStatus.UNKNOWN)
+            # This case is not supposed to be reached, since dagster should detect the end of execution,
+            # before calling check_run_worker_health
+            case (alloc_id, NomadTaskState.DEAD, False):
+                return CheckRunHealthResult(
+                    WorkerStatus.FAILED,
+                    f"Nomad task of dispatched_job_id `{dispatched_job_id}` exited successfully "
+                    f"but the run never reported its completion (com.hashicorp.nomad.alloc_id: {alloc_id}).",
+                )
+            case (_, state, _):
+                return CheckRunHealthResult(WorkerStatus.UNKNOWN, f"Unhandled Nomad task state `{state}`.")
 
     @property
     def supports_resume_run(self) -> bool:
