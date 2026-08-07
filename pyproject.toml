@@ -9,26 +9,9 @@ dependencies = [
     "dagster~=1.13.13",
     "dagster-postgres~=0.29.13",
     "dagster-webserver~=1.13.13",
-    "httpx~=0.28.1",
+    "httpx2~=2.9.1",
     "dagster-nomad",
 ]
-
-[tool.black]
-line-length = 120
-target-version = ['py310']
-include = '\.pyi?$'
-exclude = '''
-/(
-    \.eggs
-  | \.git
-  | \.mypy_cache
-  | \.pytest_cache
-  | \.ruff_cache
-  | \.venv
-  | build
-  | dist
-  )/
-'''
 
 [tool.ruff]
 line-length = 120
@@ -53,7 +36,6 @@ dagster-nomad = { workspace = true }
 
 [dependency-groups]
 dev = [
-    "black>=25.1.0",
     "pandas>=2.2.3",
     "pytest>=9.1.1",
     "rich>=14.0.0",

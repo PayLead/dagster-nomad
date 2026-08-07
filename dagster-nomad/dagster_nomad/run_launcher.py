@@ -4,7 +4,7 @@ import base64
 from collections.abc import Generator
 from typing import Any, ClassVar, Optional
 
-import httpx
+import httpx2
 from dagster import Field, Map, StringSource
 from dagster import _check as check
 from dagster._core.instance import T_DagsterInstance
@@ -20,19 +20,19 @@ from dagster._serdes import ConfigurableClass
 from dagster._serdes.config_class import ConfigurableClassData
 
 
-class NomadAuth(httpx.Auth):
+class NomadAuth(httpx2.Auth):
     __slots__ = ("token",)
 
     def __init__(self, token: str | None = None):
         self.token = token
 
-    def auth_flow(self, request: httpx.Request) -> Generator[httpx.Request, httpx.Response, None]:
+    def auth_flow(self, request: httpx2.Request) -> Generator[httpx2.Request, httpx2.Response, None]:
         if self.token:
             request.headers["X-Nomad-Token"] = self.token
         yield request
 
 
-class NomadClient(httpx.Client):
+class NomadClient(httpx2.Client):
     __slots__ = ()
 
     def __init__(self, url: str, token: str | None = None, namespace: str | None = None, **kwargs):
@@ -251,7 +251,7 @@ class NomadRunLauncher(RunLauncher[T_DagsterInstance], ConfigurableClass):
 
         try:
             state, failed = self.nomad_client.get_job_status(dispatched_job_id)
-        except httpx.HTTPError as exc:
+        except httpx2.HTTPError as exc:
             self._instance.report_engine_event(
                 message=f"Failed to get run status of dispatched_job_id `{dispatched_job_id}`: `{exc}",
                 dagster_run=run,
