@@ -1,7 +1,7 @@
 import httpx2
 import pytest
 
-from dagster_nomad.run_launcher import NomadClient
+from dagster_nomad.run_launcher import NomadClient, NomadTaskState
 
 ALLOCATIONS_RESPONSE = [
     {
@@ -162,16 +162,81 @@ def allocations_response():
     return ALLOCATIONS_RESPONSE
 
 
+def allocation(create_index: int, state: str = "running", failed: bool = False) -> dict:
+    """Build the subset of an allocation payload `get_job_status` relies on."""
+    return {
+        "ID": f"allocation-{create_index}",
+        "CreateIndex": create_index,
+        "TaskStates": {"knowledge": {"State": state, "Failed": failed}},
+    }
+
+
+def client_returning(response: httpx2.Response, expected_path: str = "/v1/job/test_job/allocations") -> NomadClient:
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        assert request.url.path == expected_path
+        return response
+
+    return NomadClient(url="http://nomad.example.com", transport=httpx2.MockTransport(handler))
+
+
 class TestNomadClientGetJobStatus:
     def test_get_job_status(self, allocations_response):
-        def handler(request: httpx2.Request) -> httpx2.Response:
-            assert request.url.path == "/v1/job/test_job/allocations"
-            return httpx2.Response(200, json=allocations_response)
-
-        client = NomadClient(url="http://nomad.example.com", transport=httpx2.MockTransport(handler))
+        client = client_returning(httpx2.Response(200, json=allocations_response))
 
         alloc_id, state, failed = client.get_job_status("test_job")
 
         assert alloc_id == "c7fda1f4-e05d-e113-cb7e-0f7956fab617"
         assert state == "dead"
         assert failed is False
+
+    def test_get_job_status_when_job_is_garbage_collected(self):
+        """Nomad drops the job itself once `job_gc_threshold` is reached."""
+        client = client_returning(httpx2.Response(404, text="job not found"))
+
+        assert client.get_job_status("test_job") is None
+
+    def test_get_job_status_when_allocations_are_garbage_collected(self):
+        """`alloc_gc_threshold` is shorter than `job_gc_threshold`, so the job can outlive its allocations."""
+        client = client_returning(httpx2.Response(200, json=[]))
+
+        assert client.get_job_status("test_job") is None
+
+    def test_get_job_status_uses_the_most_recent_allocation(self):
+        """A rescheduled job keeps its previous allocations, which are not ordered by the API.
+
+        The stale allocations are listed first on purpose: reporting one of them would mark
+        a healthy run as failed.
+        """
+        client = client_returning(
+            httpx2.Response(
+                200,
+                json=[
+                    allocation(19055340, state="dead", failed=True),
+                    allocation(19055342, state="running"),
+                    allocation(19055341, state="dead", failed=True),
+                ],
+            )
+        )
+
+        assert client.get_job_status("test_job") == ("allocation-19055342", NomadTaskState.RUNNING, False)
+
+    def test_get_job_status_when_task_has_not_started_yet(self):
+        """An allocation is created before the task is received by a client."""
+        client = client_returning(httpx2.Response(200, json=[{"ID": "alloc", "CreateIndex": 1, "TaskStates": None}]))
+
+        assert client.get_job_status("test_job") == ("alloc", NomadTaskState.PENDING, False)
+
+    def test_get_job_status_with_a_state_outside_of_the_documented_ones(self):
+        """Nomad documents three task states, a fourth one means the API changed and
+        must be raised rather than guessed.
+        """
+        client = client_returning(httpx2.Response(200, json=[allocation(1, state="something_else")]))
+
+        with pytest.raises(ValueError):
+            client.get_job_status("test_job")
+
+    def test_get_job_status_raises_on_server_error(self):
+        client = client_returning(httpx2.Response(500, text="rpc error"))
+
+        with pytest.raises(httpx2.HTTPStatusError):
+            client.get_job_status("test_job")
