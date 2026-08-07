@@ -170,7 +170,8 @@ class TestNomadClientGetJobStatus:
 
         client = NomadClient(url="http://nomad.example.com", transport=httpx2.MockTransport(handler))
 
-        state, failed = client.get_job_status("test_job")
+        alloc_id, state, failed = client.get_job_status("test_job")
 
+        assert alloc_id == "c7fda1f4-e05d-e113-cb7e-0f7956fab617"
         assert state == "dead"
         assert failed is False
