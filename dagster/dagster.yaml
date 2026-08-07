@@ -22,5 +22,10 @@ compute_logs:
     endpoint_url:
       env: DAGSTER_S3_ENDPOINT_URL
 
+run_monitoring:
+  enabled: true
+  start_timeout_seconds: 300
+  poll_interval_seconds: 5
+
 telemetry:
   enabled: false
