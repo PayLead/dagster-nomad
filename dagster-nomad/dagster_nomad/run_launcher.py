@@ -65,7 +65,7 @@ class NomadClient(httpx2.Client):
         res.raise_for_status()
         return res.json()["DispatchedJobID"]
 
-    def get_job_status(self, job_id: str) -> tuple[str, bool]:
+    def get_job_status(self, job_id: str) -> tuple[str, str, bool]:
         """Retrieve the status of the provided job id.
 
         Args:
@@ -85,7 +85,9 @@ class NomadClient(httpx2.Client):
         state: str = data[0]["TaskStates"][task]["State"]
         failed: bool = data[0]["TaskStates"][task]["Failed"]
 
-        return state, failed
+        alloc_id = data[0]["ID"]
+
+        return alloc_id, state, failed
 
     def stop_job(self, job_id: str) -> None:
         """Stop a job
@@ -250,7 +252,7 @@ class NomadRunLauncher(RunLauncher[T_DagsterInstance], ConfigurableClass):
         dispatched_job_id = run.tags.get(self.NOMAD_DISPATCHED_JOB_ID_TAG)
 
         try:
-            state, failed = self.nomad_client.get_job_status(dispatched_job_id)
+            alloc_id, state, failed = self.nomad_client.get_job_status(dispatched_job_id)
         except httpx2.HTTPError as exc:
             self._instance.report_engine_event(
                 message=f"Failed to get run status of dispatched_job_id `{dispatched_job_id}`: `{exc}",
@@ -261,6 +263,11 @@ class NomadRunLauncher(RunLauncher[T_DagsterInstance], ConfigurableClass):
 
         match (state, failed):
             case ("running", _):
+                self._instance.report_engine_event(
+                    message=f"Job is running: `com.hashicorp.nomad.alloc_id: {alloc_id}`",
+                    dagster_run=run,
+                    cls=self.__class__,
+                )
                 return CheckRunHealthResult(WorkerStatus.RUNNING)
             case ("dead", True):
                 return CheckRunHealthResult(WorkerStatus.FAILED)

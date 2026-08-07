@@ -257,7 +257,7 @@ wheels = [
 
 [[package]]
 name = "dagster-nomad"
-version = "0.1.1"
+version = "0.1.2"
 source = { editable = "dagster-nomad" }
 dependencies = [
     { name = "dagster" },

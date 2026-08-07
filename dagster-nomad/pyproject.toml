@@ -1,12 +1,13 @@
 [project]
 name = "dagster-nomad"
-version = "0.1.1"
+version = "0.1.2"
 description = "Dagster integration library for Nomad"
 readme = "README.md"
 authors = [
     { name = "Bruno Bonfils", email = "asyd@asyd.net" },
     { name = "Thomas Aubry", email = "github.thomaub@gmail.com" },
     { name = "Thomas Berdy", email = "thomas.berdy@outlook.com" },
+    { name = "Lucas Pauzies", email = "lucas.pauzies@hotmail.fr" },
 ]
 keywords = ["dagster", "nomad", "run launcher"]
 classifiers = [
