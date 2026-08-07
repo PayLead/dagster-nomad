@@ -17,7 +17,7 @@ classifiers = [
 ]
 license = "Apache-2.0"
 requires-python = ">=3.11"
-dependencies = ["dagster>=1.9.17", "httpx>=0.28.0"]
+dependencies = ["dagster>=1.9.17", "httpx2>=2.9.0"]
 
 [project.urls]
 Repository = "https://github.com/paylead/dagster-nomad"
@@ -28,23 +28,6 @@ include = ["dagster_nomad", "dagster_nomad.*"]
 [tool.pytest.ini_options]
 log_cli = true
 log_level = "INFO"
-
-[tool.black]
-line-length = 120
-target-version = ['py310']
-include = '\.pyi?$'
-exclude = '''
-/(
-    \.eggs
-  | \.git
-  | \.mypy_cache
-  | \.pytest_cache
-  | \.ruff_cache
-  | \.venv
-  | build
-  | dist
-  )/
-'''
 
 [tool.ruff]
 line-length = 120
@@ -61,9 +44,6 @@ exclude = [
     "dist",
     "venv",
 ]
-
-[tool.ruff.lint.isort]
-known-first-party = ["dagster_nomad", "tests"]
 
 [tool.pyright]
 reportPropertyTypeMismatch = true

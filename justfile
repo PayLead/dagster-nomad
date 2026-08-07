@@ -14,12 +14,12 @@ setup-dev:
     uv sync
 
 quality-format:
-    uv run ruff format --fix-only --exit-zero .
-    uv run black .
+    uv run ruff check --fix .
+    uv run ruff format .
 
 quality-check:
     uv run ruff check .
-    uv run black . --check
+    uv run ruff format --check .
 
 check-pkg-constraints:
     uv lock --check

@@ -1,4 +1,4 @@
-import httpx
+import httpx2
 import pytest
 
 from dagster_nomad.run_launcher import NomadClient
@@ -164,11 +164,11 @@ def allocations_response():
 
 class TestNomadClientGetJobStatus:
     def test_get_job_status(self, allocations_response):
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             assert request.url.path == "/v1/job/test_job/allocations"
-            return httpx.Response(200, json=allocations_response)
+            return httpx2.Response(200, json=allocations_response)
 
-        client = NomadClient(url="http://nomad.example.com", transport=httpx.MockTransport(handler))
+        client = NomadClient(url="http://nomad.example.com", transport=httpx2.MockTransport(handler))
 
         state, failed = client.get_job_status("test_job")
 
