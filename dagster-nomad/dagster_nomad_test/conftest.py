@@ -28,9 +28,14 @@ def job_def():
     node()
 
 
+@job(tags={"dagster-nomad/cluster": "gpu"})
+def gpu_job_def():
+    node()
+
+
 @repository
 def repository():
-    return {"jobs": {job_def.name: job_def}}
+    return {"jobs": {job_def.name: job_def, gpu_job_def.name: gpu_job_def}}
 
 
 @pytest.fixture
@@ -44,6 +49,18 @@ def run(instance: DagsterInstance, job: JobDefinition, external_job: RemoteJob) 
         job_def,
         remote_job_origin=external_job.get_remote_origin(),
         job_code_origin=external_job.get_python_origin(),
+    )
+
+
+@pytest.fixture
+def gpu_run(instance: DagsterInstance, workspace: WorkspaceRequestContext) -> DagsterRun:
+    location = workspace.get_code_location(workspace.code_location_names[0])
+    remote_job = location.get_repository(repository.name).get_full_job(gpu_job_def.name)
+    return instance.create_run_for_job(
+        gpu_job_def,
+        remote_job_origin=remote_job.get_remote_origin(),
+        job_code_origin=remote_job.get_python_origin(),
+        tags=remote_job.run_tags,
     )
 
 
