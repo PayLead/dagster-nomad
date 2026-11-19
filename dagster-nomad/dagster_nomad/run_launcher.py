@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 from collections.abc import Generator
 from dataclasses import dataclass, field
+from enum import StrEnum
 from fnmatch import fnmatchcase
 from typing import Any, ClassVar, Optional
 
@@ -105,6 +106,13 @@ class NomadClient(httpx2.Client):
 
 
 DEFAULT_CLUSTER: str = "default"
+
+
+class DispatchKind(StrEnum):
+    """Why a Nomad job is dispatched for a Dagster run."""
+
+    RUN = "run"
+    RESUME_RUN = "resume_run"
 
 
 class UnknownNomadClusterError(Exception):
@@ -359,7 +367,7 @@ class NomadRunLauncher(RunLauncher[T_DagsterInstance], ConfigurableClass):
             raise UnknownNomadClusterError(f"Run `{run.run_id}` was dispatched on unknown Nomad cluster `{cluster}`.")
         return cluster
 
-    def _dispatch(self, run: DagsterRun, payload: str, docker_image: str, kind: str) -> None:
+    def _dispatch(self, run: DagsterRun, payload: str, docker_image: str, kind: DispatchKind) -> None:
         cluster = self._select_cluster(run)
         nomad_job_id = cluster.resolve_job_id(self._get_location_name(run))
 
@@ -395,7 +403,7 @@ class NomadRunLauncher(RunLauncher[T_DagsterInstance], ConfigurableClass):
         command = self._get_command_args(args, context)
         payload = "\n".join(command)
 
-        self._dispatch(run, payload, docker_image, kind="run")
+        self._dispatch(run, payload, docker_image, kind=DispatchKind.RUN)
 
     def terminate(self, run_id: str) -> bool:
         dispatched_job_id = None
@@ -475,4 +483,4 @@ class NomadRunLauncher(RunLauncher[T_DagsterInstance], ConfigurableClass):
         command = args.get_command_args()
         payload = "\n".join(command)
 
-        self._dispatch(run, payload, docker_image, kind="resume_run")
+        self._dispatch(run, payload, docker_image, kind=DispatchKind.RESUME_RUN)
